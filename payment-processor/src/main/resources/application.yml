@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: payment-processor
+  datasource:
+    url: jdbc:h2:mem:payment_processor_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+#    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-processor
+      auto-offset-reset: earliest # Useful for local development so a new consumer can replay topic history from the beginning.
+      max-poll-records: 1 # Single-record processing keeps each Kafka message easy to trace and aligns with the event-by-event service flow.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.paystream.processor.dto
+        spring.json.value.default.type: com.paystream.processor.dto.PaymentEvent
+        spring.json.use.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    listener:
+      concurrency: 6 # Match the six partitions on the payments topics so the processor can scale across all partitions.
+      ack-mode: BATCH # Batch acknowledgements are a sensible default for clean, high-throughput local processing.
+      missing-topics-fatal: false
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  kafka:
+    topics:
+      payments-submitted: payments.submitted
+      payments-processed: payments.processed
+
+
+
