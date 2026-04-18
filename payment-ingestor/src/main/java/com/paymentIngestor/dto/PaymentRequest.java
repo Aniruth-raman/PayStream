@@ -1,17 +1,23 @@
 package com.paymentIngestor.dto;
 
-import jakarta.persistence.Entity;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.UUID;
-
 
 public class PaymentRequest {
 
-    @NotNull(message = "Payment ID must be a valid UUID")
-    private UUID paymentId;
+    private static final String UUID_PATTERN =
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$";
+
+    @NotBlank(message = "Payment ID must be a valid UUID")
+    @Pattern(regexp = UUID_PATTERN, message = "Payment ID must be a valid UUID")
+    private String paymentId;
 
     @NotBlank(message = "Debit account ID must not be blank")
     private String debitAccountId;
@@ -20,27 +26,25 @@ public class PaymentRequest {
     private String creditAccountId;
 
     @NotNull(message = "Amount must not be null")
-    @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
+    @Positive(message = "Amount must be greater than 0")
     private BigDecimal amount;
 
-    @NotBlank(message = "Currency must not be blank")
+    @NotBlank(message = "Currency must be a 3-character ISO code")
     @Size(min = 3, max = 3, message = "Currency must be a 3-character ISO code")
     private String currency;
 
     @Size(max = 35, message = "Reference must not exceed 35 characters")
-    private String reference; // optional
+    private String reference;
 
     @NotNull(message = "Timestamp must not be null")
     @PastOrPresent(message = "Timestamp must not be in the future")
     private OffsetDateTime timestamp;
 
-    // Getters and Setters
-
-    public UUID getPaymentId() {
+    public String getPaymentId() {
         return paymentId;
     }
 
-    public void setPaymentId(UUID paymentId) {
+    public void setPaymentId(String paymentId) {
         this.paymentId = paymentId;
     }
 
