@@ -1,51 +1,69 @@
 package com.paymentIngestor.service;
 
 import com.paymentIngestor.Repository.AccountRepository;
+import com.paymentIngestor.Repository.PaymentRepository;
 import com.paymentIngestor.dto.PaymentRequest;
+import com.paymentIngestor.entity.Account;
+import com.paymentIngestor.entity.AccountStatus;
+import com.paymentIngestor.entity.PaymentRequestEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class PaymentService {
 
     private final AccountRepository accountRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+
+    private final PaymentRepository paymentRepository;
+    private final KafkaTemplate<String, PaymentRequest> kafkaTemplate;
 
     private static final String TOPIC = "payments.submitted";
 
-    public PaymentService(AccountRepository accountRepository,
-                          KafkaTemplate<String, Object> kafkaTemplate) {
-        this.accountRepository = accountRepository;
-        this.kafkaTemplate = kafkaTemplate;
-    }
-
-    public String processPayment(PaymentRequest request) {
+    public String processPayment(PaymentRequest request) throws Exception {
 
         // 🔹 1. Check debit account exists
         Account debit = accountRepository.findById(request.getDebitAccountId())
-                .orElseThrow(() -> new NotFoundException(
+                .orElseThrow(() -> new Exception(
                         "Debit account not found: " + request.getDebitAccountId()));
 
         // 🔹 2. Check credit account exists
         Account credit = accountRepository.findById(request.getCreditAccountId())
-                .orElseThrow(() -> new NotFoundException(
+                .orElseThrow(() -> new Exception(
                         "Credit account not found: " + request.getCreditAccountId()));
 
         // 🔹 3. Check account status
         if (debit.getStatus() == AccountStatus.SUSPENDED) {
-            throw new UnprocessableException(
+            throw new Exception(
                     "Account is suspended: " + debit.getAccountId());
         }
 
         if (credit.getStatus() == AccountStatus.SUSPENDED) {
-            throw new UnprocessableException(
+            throw new Exception(
                     "Account is suspended: " + credit.getAccountId());
         }
 
-        // 🔹 4. (Optional but HIGH VALUE) Duplicate check
-        // if (paymentRepository.existsByPaymentId(request.getPaymentId())) {
-        //     throw new ConflictException("Duplicate paymentId");
-        // }
+//        // 🔹 4. (Optional but HIGH VALUE) Duplicate check
+//         if (paymentRepository.existsByPaymentId(request.getPaymentId())) {
+//             throw new ConflictException("Duplicate paymentId");
+//         }
+
+        if (paymentRepository.existsById(request.getPaymentId())) {
+            throw new Exception("Duplicate paymentId");
+        }
+
+        PaymentRequestEntity entity = PaymentRequestEntity.builder()
+                .paymentId(request.getPaymentId())
+                .debitAccountId(request.getDebitAccountId())
+                .creditAccountId(request.getCreditAccountId())
+                .amount(request.getAmount())
+                .currency(request.getCurrency())
+                .reference(request.getReference())
+                .timestamp(request.getTimestamp())
+                .build();
+        paymentRepository.save(entity);
 
         // 🔹 5. Publish to Kafka
         kafkaTemplate.send(

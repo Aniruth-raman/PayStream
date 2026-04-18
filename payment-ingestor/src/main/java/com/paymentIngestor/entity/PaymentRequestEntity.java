@@ -1,40 +1,53 @@
-package com.paymentIngestor.dto;
+package com.paymentIngestor.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.validation.constraints.*;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+@Entity
+@Table(name = "payment_requests")
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PaymentRequestEntity {
 
-public class PaymentRequest {
-
-    @NotNull(message = "Payment ID must be a valid UUID")
+    @Id
+    @Column(name = "payment_id", nullable = false, unique = true)
     private UUID paymentId;
 
-    @NotBlank(message = "Debit account ID must not be blank")
+    @Column(name = "debit_account_id", nullable = false)
     private String debitAccountId;
 
-    @NotBlank(message = "Credit account ID must not be blank")
+    @Column(name = "credit_account_id", nullable = false)
     private String creditAccountId;
 
-    @NotNull(message = "Amount must not be null")
-    @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
-    @NotBlank(message = "Currency must not be blank")
-    @Size(min = 3, max = 3, message = "Currency must be a 3-character ISO code")
+    @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    @Size(max = 35, message = "Reference must not exceed 35 characters")
-    private String reference; // optional
+    @Column(name = "reference", length = 35)
+    private String reference;
 
-    @NotNull(message = "Timestamp must not be null")
-    @PastOrPresent(message = "Timestamp must not be in the future")
+    @Column(name = "timestamp", nullable = false)
     private OffsetDateTime timestamp;
 
-    // Getters and Setters
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    // ✅ Auto-set createdAt before insert
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = OffsetDateTime.now();
+    }
+
+    // ===== Getters & Setters =====
 
     public UUID getPaymentId() {
         return paymentId;
@@ -90,5 +103,9 @@ public class PaymentRequest {
 
     public void setTimestamp(OffsetDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
     }
 }
