@@ -1,5 +1,8 @@
 package com.paymentIngestor.service;
 
+import com.paymentIngestor.Exception.DuplicateAccountException;
+import com.paymentIngestor.Exception.NotFoundException;
+import com.paymentIngestor.Exception.UnprocessableException;
 import com.paymentIngestor.Repository.AccountRepository;
 import com.paymentIngestor.Repository.PaymentRepository;
 import com.paymentIngestor.dto.PaymentRequest;
@@ -31,17 +34,17 @@ public class PaymentService {
 
         // 🔹 2. Check credit account exists
         Account credit = accountRepository.findById(request.getCreditAccountId())
-                .orElseThrow(() -> new Exception(
+                .orElseThrow(() -> new NotFoundException(
                         "Credit account not found: " + request.getCreditAccountId()));
 
         // 🔹 3. Check account status
         if (debit.getStatus() == AccountStatus.SUSPENDED) {
-            throw new Exception(
+            throw new UnprocessableException(
                     "Account is suspended: " + debit.getAccountId());
         }
 
         if (credit.getStatus() == AccountStatus.SUSPENDED) {
-            throw new Exception(
+            throw new UnprocessableException(
                     "Account is suspended: " + credit.getAccountId());
         }
 
@@ -51,7 +54,7 @@ public class PaymentService {
 //         }
 
         if (paymentRepository.existsById(request.getPaymentId())) {
-            throw new Exception("Duplicate paymentId");
+            throw new DuplicateAccountException("Duplicate paymentId");
         }
 
         PaymentRequestEntity entity = PaymentRequestEntity.builder()
